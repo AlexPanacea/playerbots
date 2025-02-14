@@ -1,7 +1,7 @@
-
 #include "playerbot/playerbot.h"
 #include "CheckMailAction.h"
 #include "Mails/Mail.h"
+#include "playerbot/strategy/values/ItemUsageValue.h"
 
 #include "playerbot/PlayerbotAIConfig.h"
 using namespace ai;
@@ -60,16 +60,21 @@ bool CheckMailAction::isUseful()
 }
 
 
-void CheckMailAction::ProcessMail(Mail* mail, Player* owner)
+bool CheckMailAction::ShouldProcessMail(Mail* mail)
 {
     if (mail->items.empty())
     {
-        return;
+        return false;
     }
 
     if (mail->subject.find("Item(s) you asked for") != std::string::npos)
-        return;
+        return false;
 
+    return true;
+}
+
+void CheckMailAction::SendReturnMail(Mail* mail, Player* owner)
+{
     for (MailItemInfoVec::iterator i = mail->items.begin(); i != mail->items.end(); ++i)
     {
         Item *item = bot->GetMItem(i->item_guid);
@@ -89,5 +94,29 @@ void CheckMailAction::ProcessMail(Mail* mail, Player* owner)
         bot->RemoveMItem(i->item_guid);
         draft.SendMailTo(MailReceiver(owner), MailSender(bot));
         return;
+    }
+}
+
+void CheckMailAction::ProcessMail(Mail* mail, Player* owner)
+{
+    if (!ShouldProcessMail(mail))
+        return;
+
+    for (auto& item : mail->items)
+    {
+        ItemQualifier itemQualifier(item);
+        ItemUsageValue itemUsageValue(bot->GetAI(), "item usage");
+        ItemUsage itemUsage = itemUsageValue.Calculate(itemQualifier);
+
+        if (itemUsage == ItemUsage::ITEM_USAGE_NONE)
+        {
+            // Item is not useful, SendReturnMail
+            SendReturnMail(mail, owner);
+            continue;
+        }
+
+        // Item is useful, get item from mail.
+        Item *item = bot->GetMItem(i->item_guid);
+        item->SetOwnerGUID(bot->GetObjectGuid());
     }
 }

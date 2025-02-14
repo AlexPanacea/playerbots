@@ -13,6 +13,8 @@ namespace ai
         virtual bool isUseful();
 
     private:
+        bool ShouldProcessMail(Mail* mail);
+        void SendReturnMail(Mail* mail, Player* owner);
         void ProcessMail(Mail* mail, Player* owner);
     };
 }
