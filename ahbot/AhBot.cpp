@@ -565,9 +565,11 @@ int AhBot::AddAuction(int auction, Category* category, ItemPrototype const* prot
     uint32 buyoutPrice = PricingStrategy::RoundPrice(stackCount * urand(price, 4 * price / 3));
 
     Item* item = Item::CreateItem(proto->ItemId, stackCount);
-    if (!item)
+    if (!item || !item->GetObjectGuid().GetCounter())
+    {
+        delete item;
         return 0;
-
+    }
     uint32 randomPropertyId = Item::GenerateItemRandomPropertyId(proto->ItemId);
     if (randomPropertyId)
         item->SetItemRandomProperties(randomPropertyId);
@@ -582,7 +584,14 @@ int AhBot::AddAuction(int auction, Category* category, ItemPrototype const* prot
 
     AuctionEntry* auctionEntry = new AuctionEntry;
     auctionEntry->Id = sObjectMgr.GenerateAuctionID();
-    auctionEntry->itemGuidLow = item->GetObjectGuid().GetCounter();
+    uint32 itemGuidLow = item->GetObjectGuid().GetCounter();
+    if (!itemGuidLow)
+    {
+        delete item;
+        delete auctionEntry;
+        return 0;
+    }
+    auctionEntry->itemGuidLow = itemGuidLow;
     auctionEntry->itemTemplate = item->GetEntry();
     auctionEntry->itemCount = item->GetCount();
     auctionEntry->itemRandomPropertyId = item->GetItemRandomPropertyId();
